@@ -1,1 +1,1 @@
-# AuthentiChain-Authenticity_Verification_Platform
+# AuthentiChain: Authenticity Verification Platform
