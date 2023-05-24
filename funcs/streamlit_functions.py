@@ -1,4 +1,4 @@
-import streamlit as st
+import Main as st
 from web3 import Web3
 import uuid
 import qrcode
@@ -6,13 +6,6 @@ import qrcode
 # Load Ethereum smart contract ABI and address (replace with your own values)
 CONTRACT_ABI = 'your_smart_contract_abi'
 CONTRACT_ADDRESS = 'your_smart_contract_address'
-
-# # Connect to Ethereum network (Infura, local node, or other provider)
-# w3 = Web3(Web3.HTTPProvider("your_rpc_endpoint"))
-
-# # Initialize contract object
-# contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
-
 
 # Utility function to generate unique identifier for products
 def generate_unique_identifier(product_name, product_desc):
@@ -101,40 +94,3 @@ def verify_product(unique_identifier):
         return True, product
     else:
         return False, None
-
-
-# Streamlit UI
-st.title("AuthentiChain")
-selected_role = st.sidebar.radio("Select Role", ["Manufacturer", "Supply Chain", "Buyer"])
-
-if selected_role == "Manufacturer":
-    st.header("Manufacturer")
-    with st.form(key="product_form"):
-        product_name = st.text_input("Product Name")
-        product_desc = st.text_input("Product Description")
-        submit_button = st.form_submit_button("Generate QR Code")
-
-        if submit_button:
-            unique_identifier = generate_unique_identifier(product_name, product_desc)
-            qr_image = generate_qr_code(unique_identifier)
-            st.image(qr_image, caption="Generated QR Code", use_column_width=True)
-
-elif selected_role == "Supply Chain":
-    st.header("Supply Chain")
-    # Implement supply chain functionality (e.g., scanning QR codes, updating product information, etc.)
-
-elif selected_role == "Buyer":
-    st.header("Buyer")
-    unique_identifier = st.text_input("Enter Unique Identifier")
-    verify_button = st.button("Verify Product Authenticity")
-
-    if verify_button:
-        is_valid, product = verify_product(unique_identifier)
-        if is_valid:
-            st.success("Product is authentic")
-            # Display product information and history
-        else:
-            st.error("Product could not be verified")
-
-if __name__ == "__main__":
-    st.run()
