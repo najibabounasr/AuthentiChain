@@ -1,8 +1,5 @@
-import Main as st
-from web3 import Web3
-import uuid
-import qrcode
-
+from statsmodels.tsa.stattools import adfuller
+import pandas as pd
 # Load Ethereum smart contract ABI and address (replace with your own values)
 CONTRACT_ABI = 'your_smart_contract_abi'
 CONTRACT_ADDRESS = 'your_smart_contract_address'
@@ -65,16 +62,16 @@ def generate_qr_code(input_data):
 
 
 
-    # # Add the input data to the QRCode object
-    # qr.add_data(input_data)
+#     # Add the input data to the QRCode object
+#     qr.add_data(input_data)
 
-    # # Optimize the QR code data for the given input
-    # qr.make(fit=True)
+#     # Optimize the QR code data for the given input
+#     qr.make(fit=True)
 
-    # # Create an image from the QR code data
-    # img = qr.make_image(fill_color="black", back_color="white")
+#     # Create an image from the QR code data
+#     img = qr.make_image(fill_color="black", back_color="white")
 
-    # return img
+#     return img
 
 
 # Verify product authenticity using unique identifier
@@ -94,3 +91,30 @@ def verify_product(unique_identifier):
         return True, product
     else:
         return False, None
+
+
+# Define a function to perform the Augmented Dickey-Fuller test
+def check_stationarity(data):
+    """
+    Perform Augmented Dickey-Fuller test to check for stationarity.
+    
+    Arguments:
+    Pandas Series: a series of data to be checked for stationarity.
+    
+    Returns:
+    Prints test statistics and critical values.
+    """
+    # Perform Augmented Dickey-Fuller test
+    # Perform the test using the AIC criterion for choosing the number of lags
+    print('Results of Augmented Dickey-Fuller Test:')
+    adf_test = adfuller(data, autolag='AIC')  
+
+    # Extract and print the test statistics and critical values
+    adf_output = pd.Series(adf_test[0:4], 
+                           index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
+    
+    for key, value in adf_test[4].items():
+        adf_output['Critical Value (%s)' % key] = value
+    print(adf_output)
+    return adf_output
+

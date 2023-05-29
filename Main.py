@@ -2,7 +2,8 @@ import streamlit as st
 from web3 import Web3
 import uuid
 import qrcode
-from funcs.streamlit_functions import generate_unique_identifier, generate_qr_code, verify_product
+from funcs.streamlit_functions import generate_unique_identifier
+from funcs.streamlit_functions import generate_qr_code, verify_product
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -27,7 +28,6 @@ to more robust identifiers.
 """)
 # Explain the purpose of the app           
 st.warning("This application serves to demonstrate the capabilities of blockchain ledger technology, and is not meant to be used in a production environment.")
-
 
 # Developer information
 developers = [
