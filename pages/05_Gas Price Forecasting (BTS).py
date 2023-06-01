@@ -16,7 +16,16 @@ import itertools
 import statsmodels.api as sm
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-            
+import hvplot.pandas  # Import HvPlot for Pandas
+import matplotlib.pyplot as plt
+import holoviews as hv
+from holoviews import dim, opts
+from bokeh.plotting import show  # Import show function from Bokeh
+from statsmodels.tsa.arima.model import ARIMA
+import pickle
+# initialize bokeh
+hv.extension('bokeh')
+
 # Explain 
 ### Initialize the Streamlit Page
 st.title("Gas Price Forecasting")
@@ -45,92 +54,92 @@ with st.expander("Part 1:"):
     st.subheader("Data Collection")
     st.warning("Depending on the selected timeframe, wait times can reach 20 Minutes and more.")
 
-    # Define the start and end dates for which the data is required
-    start_date = st.slider("Select the start date", datetime(2020, 5, 19), datetime(2021, 5, 19))
-    end_date = st.slider("Select the end date", datetime(2020, 5, 19), datetime(2021, 5, 19))
-    st.session_state['start_date'] = start_date
-    st.session_state['end_date'] = end_date
 
 
-    if st.button("Load live Prices Data") and (not pd.isnull(end_date)) and (not pd.isnull(start_date)):
-        # Load .env file
-        load_dotenv()
+    # if st.button("Load Live Data") and (not pd.isnull(end_date)) and (not pd.isnull(start_date)):
+    #     st.session_state['start_date'] = start_date
+    #     st.session_state['end_date'] = end_date
+    #     # Load .env file
+    #     load_dotenv()
 
-        # Load API key from .env file
-        api_key = os.getenv("ALCHEMY_API_KEY")
+    #     # Load API key from .env file
+    #     api_key = os.getenv("ALCHEMY_API_KEY")
 
-        # Define the Alchemy API endpoint
-        api_endpoint = f"https://eth-mainnet.g.alchemy.com/v2/{api_key}"
+    #     # Define the Alchemy API endpoint
+    #     api_endpoint = f"https://eth-mainnet.g.alchemy.com/v2/{api_key}"
 
-        # Set up Web3 connection
-        w3 = Web3(Web3.HTTPProvider(api_endpoint))
+    #     # Set up Web3 connection
+    #     w3 = Web3(Web3.HTTPProvider(api_endpoint))
 
-        # Check if the connection is successful
-        if w3.is_connected():
-            st.write("Connected to Ethereum node.")
-        else:
-            st.write("Connection failed!")
+    #     # Check if the connection is successful
+    #     if w3.is_connected():
+    #         st.write("Connected to Ethereum node.")
+    #     else:
+    #         st.write("Connection failed!")
         
-        # Display loading message
-        loading_message = st.text('Loading...')
+    #     # Display loading message
+    #     loading_message = st.text('Loading...')
         
-        # Simulate some time-consuming process
-        time.sleep(5)
+    #     # Simulate some time-consuming process
+    #     time.sleep(5)
 
-        # Define the block time(in seconds)
-        avg_block_time = 13  
-        st.write(f"Average block time: {avg_block_time} seconds")
+    #     # Define the block time(in seconds)
+    #     avg_block_time = 13  
+    #     st.write(f"Average block time: {avg_block_time} seconds")
 
-        # Calculate the estimated number of blocks per hourn(3600 seconds in an hour)
-        blocks_per_hour = int(3600 / avg_block_time)
-        st.write(f"Estimated blocks per hour: {blocks_per_hour}")
+    #     # Calculate the estimated number of blocks per hourn(3600 seconds in an hour)
+    #     blocks_per_hour = int(3600 / avg_block_time)
+    #     st.write(f"Estimated blocks per hour: {blocks_per_hour}")
 
-        # Calculate the total hours for the given time period
-        total_hours = int((end_date - start_date).total_seconds() / 3600)
+    #     # Calculate the total hours for the given time period
+    #     total_hours = int((end_date - start_date).total_seconds() / 3600)
 
-        # Calculate the total number of blocks for the given time period
-        total_blocks = total_hours * blocks_per_hour
-        st.write(f"Total number of hourly blocks for the given time period: {total_blocks}")
+    #     # Calculate the total number of blocks for the given time period
+    #     total_blocks = total_hours * blocks_per_hour
+    #     st.write(f"Total number of hourly blocks for the given time period: {total_blocks}")
 
-        # Get the latest block number
-        latest_block = w3.eth.block_number
-        st.write(latest_block)
+    #     # Get the latest block number
+    #     latest_block = w3.eth.block_number
+    #     st.write(latest_block)
 
-        # Calculate the start block
-        start_block = latest_block - total_blocks
-        start_block
+    #     # Calculate the start block
+    #     start_block = latest_block - total_blocks
+    #     start_block
 
-        # Initialize an empty DataFrame to store the gas prices
-        gas_price_data = pd.DataFrame(columns=['timestamp', 'gas_price'])
+    #     # Initialize an empty DataFrame to store the gas prices
+    #     gas_price_data = pd.DataFrame(columns=['timestamp', 'gas_price'])
 
-        # Loop through the blocks, show status bar
-        for block_number in tqdm(range(start_block, latest_block, blocks_per_hour),
-                                desc="Fetching gas prices data"): 
+    #     # Loop through the blocks, show status bar
+    #     for block_number in tqdm(range(start_block, latest_block, blocks_per_hour),
+    #                             desc="Fetching gas prices data"): 
             
-            # Get the block details
-            block = w3.eth.get_block(block_number)
+    #         # Get the block details
+    #         block = w3.eth.get_block(block_number)
 
-            # Convert the gas price from hex to integer
-            gas_price = int(str(block['baseFeePerGas']), 16)
+    #         # Convert the gas price from hex to integer
+    #         gas_price = int(str(block['baseFeePerGas']), 16)
 
-            # Convert timestamp to datetime and create a DataFrame with the block timestamp and gas price
-            block_data = pd.DataFrame({
-                'timestamp': [datetime.fromtimestamp(block['timestamp'])],
-                'gas_price': [gas_price]
-            })
+    #         # Convert timestamp to datetime and create a DataFrame with the block timestamp and gas price
+    #         block_data = pd.DataFrame({
+    #             'timestamp': [datetime.fromtimestamp(block['timestamp'])],
+    #             'gas_price': [gas_price]
+    #         })
 
-            # Append the block data to the gas price data DataFrame
-            gas_price_data = pd.concat([gas_price_data, block_data])
+    #         # Append the block data to the gas price data DataFrame
+    #         gas_price_data = pd.concat([gas_price_data, block_data])
 
-        # Update loading message
-        loading_message.text('Loading complete!')
-        # Save the DataFrame to a CSV file
-        gas_price_data.to_csv('resources/gas_price_data.csv', index=False)
-        # Display The DataFrame:
-        st.write(gas_price_data)
+    #     # Update loading message
+    #     loading_message.text('Loading complete!')
+    #     # Save the DataFrame to a CSV file
+    #     gas_price_data.to_csv('resources/gas_price_data.csv', index=False)
+    #     # Display The DataFrame:
+    #     st.write(gas_price_data)
 
-        # Show the final result
-        st.success('Data loaded successfully.')
+    #     # Show the final result
+    #     st.success('Data loaded successfully.')
+    # Define the start and end dates for which the data is required
+    start_date = st.slider("Select the start date", datetime(2022, 6, 2), datetime(2023, 5, 19))
+    end_date = st.slider("Select the end date", datetime(2022, 6, 2), datetime(2023, 5, 19))
 
     # Load the gas price data from the CSV file
     gas_price_data = pd.read_csv('resources/gas_price_data_1year.csv')
@@ -148,10 +157,42 @@ with st.expander("Part 1:"):
     daily_gas_price_df = gas_price_df.resample('D').mean()
     daily_gas_price_df.info()
 
+    st.session_state['start_date'] = start_date
+    st.session_state['end_date'] = end_date
+
 
     daily_gas_price_df.to_csv('resources/daily_gas_price_df.csv', index=True)
 
+    if st.button("Load Preprocessed Data (Much Faster)"):
+        st.write("Loading Data...")
+        daily_gas_price_df = pd.read_csv('resources/gas_price_data_1year.csv', index_col='timestamp', parse_dates=True)
+        st.write("Data Loaded Successfully!")
+        st.write("Data Preview:")
+        st.write(daily_gas_price_df.tail())
+        st.session_state['daily_gas_price_df'] = daily_gas_price_df
+        gas_price_df = daily_gas_price_df
+        start_date = "daily_gas_price_df.index.min()"
+        end_date = daily_gas_price_df.index.max()
+        st.session_state['start_date'] = start_date
+        st.session_state['end_date'] = end_date
+        daily_gas_price_df.to_csv('resources/daily_gas_price_data_1year.csv', index=True)
+
+
 st.markdown("***")
+
+
+window_size = 7  # Adjust the window size as per your data frequency
+rolling_mean = daily_gas_price_df.rolling(window=window_size).mean()
+differenced_data_2 = daily_gas_price_df - rolling_mean
+differenced_data_2 = differenced_data_2.dropna()
+differenced_data_1 = daily_gas_price_df.diff(1).dropna()
+differenced_data_1 = daily_gas_price_df.diff(1).dropna()
+differenced_data_3 = differenced_data_1 - rolling_mean
+differenced_data_3 = differenced_data_3.dropna()
+st.session_state['differenced_data_3'] = differenced_data_3
+st.session_state['differenced_data_1'] = differenced_data_1
+st.session_state['differenced_data_2'] = differenced_data_2
+
 # create a multiselect box, that includes apply simple differencing to data, apply rolling mean subtraction to data, apply rolling mean subtraction + differencing, and Use original data
 with st.expander("Part 2:"):
     st.subheader("Data Preprocessing")
@@ -208,9 +249,11 @@ with st.expander("Part 2:"):
 
 
     """)
+
+
                 
     
-    data_preprocessing_choice = st.selectbox("Visualize Preprocessing Steps", ["Simple Differencing", "Rolling Mean Subtraction", "Apply Rolling Mean Subtraction + Differencing", "Original Data"])
+    data_preprocessing_choice = st.selectbox("Visualize Preprocessing Steps", ["Simple Differencing", "Rolling Mean Subtraction", "Rolling Mean Subtraction + Differencing", "Original Data"])
     if data_preprocessing_choice == "Simple Differencing":
         # Assuming your time series data is stored in a pandas DataFrame or Series
         differenced_data_1 = daily_gas_price_df.diff(1).dropna()
@@ -230,6 +273,8 @@ with st.expander("Part 2:"):
         st.session_state['differenced_data_1'] = differenced_data_1
         # Show the plots
         st.pyplot(fig)
+        # create a miniscule pyplot
+        st.pyplot()
     elif data_preprocessing_choice == "Rolling Mean Subtraction":
         # 2: Rolling Mean Subtraction:
         window_size = 7  # Adjust the window size as per your data frequency
@@ -252,6 +297,8 @@ with st.expander("Part 2:"):
         st.session_state['differenced_data_2'] = differenced_data_2
         # Show the plots
         st.pyplot(fig)
+        # create a miniscule pyplot
+        st.pyplot()
     elif data_preprocessing_choice == "Rolling Mean Subtraction + Differencing":
         # 3.5 : Rolling Mean Subtraction + Differencing
             # Assuming your time series data is stored in a pandas DataFrame or Series
@@ -276,6 +323,8 @@ with st.expander("Part 2:"):
         st.session_state['differenced_data_3'] = differenced_data_3
         # Show the plots
         st.pyplot(fig)
+        # create a miniscule pyplot
+        st.pyplot()
     elif data_preprocessing_choice == "Original Data":
         # Define the size of the plots
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12,8))
@@ -289,6 +338,38 @@ with st.expander("Part 2:"):
         st.session_state['daily_gas_price_df'] = daily_gas_price_df
         # Show the plots
         st.pyplot(fig)
+        # create a miniscule pyplot
+        # create a second, hidden pyplot only revealed when the first is clicked
+
+        with st.expander("Explain the Plot"):
+            st.pyplot(fig)
+            # Explain acf and pacf plots:
+            st.markdown("""
+            ACF (Autocorrelation Function) and PACF (Partial Autocorrelation Function) plots are commonly used in time series analysis to understand the correlation structure of a time series data.
+
+ACF Plot:
+The Autocorrelation Function (ACF) measures the correlation between a time series and its lagged values. It helps to identify the presence of autocorrelation in the data. The ACF plot shows the correlation coefficients on the y-axis and the lag on the x-axis.
+
+Interpretation of ACF Plot:
+- If the ACF values rapidly decrease and become close to zero, it indicates a lack of autocorrelation.
+- If the ACF values decay slowly and remain significant for many lags, it suggests a high degree of autocorrelation.
+- The ACF plot can also reveal seasonality in the data. It may show significant spikes at periodic intervals, indicating a repeating pattern.
+
+PACF Plot:
+The Partial Autocorrelation Function (PACF) measures the correlation between a time series and its lagged values, while controlling for the effects of intermediate lags. It helps to identify the direct relationship between a lag and the current value in the time series.
+
+Interpretation of PACF Plot:
+- A significant spike in the PACF plot at a specific lag indicates a strong correlation between the current value and that particular lag, after removing the influence of intermediate lags.
+- The PACF plot helps to identify the order of autoregressive (AR) terms in an ARIMA model. The lag corresponding to the last significant spike in the PACF plot can provide a good starting point for determining the value of the AR order (p) in the ARIMA model.
+
+Both the ACF and PACF plots are useful for understanding the autocorrelation structure of a time series and can guide the selection of appropriate AR, MA, and ARIMA models.
+
+It's important to note that these plots provide visual insights and are used as diagnostic tools to analyze the characteristics of the data. They can help in determining the appropriate parameters for time series models.
+
+            """)
+    
+
+        
 
     ADFT_choice = st.selectbox("Perform Augmented Dickey-Fuller Test:", ["Simple Differencing", "Rolling Mean Subtraction", "Rolling Mean Subtraction + Differencing", "Original Data"])
 
@@ -297,6 +378,7 @@ with st.expander("Part 2:"):
         differenced_data_1 = daily_gas_price_df.diff(1).dropna()
         st.session_state['differenced_data_1'] = differenced_data_1
         st.write(check_stationarity(differenced_data_1['gas_price']))
+        data = differenced_data_1  
     elif ADFT_choice == "Rolling Mean Subtraction":
         # 2: Rolling Mean Subtraction:
         window_size = 7  # Adjust the window size as per your data frequency
@@ -305,6 +387,7 @@ with st.expander("Part 2:"):
         differenced_data_2 = differenced_data_2.dropna()
         st.session_state['differenced_data_2'] = differenced_data_2
         st.write(check_stationarity(differenced_data_2['gas_price']))
+        data = differenced_data_2
     elif ADFT_choice == "Rolling Mean Subtraction + Differencing":
         # 3.5 : Rolling Mean Subtraction + Differencing
             # Assuming your time series data is stored in a pandas DataFrame or Series
@@ -315,26 +398,28 @@ with st.expander("Part 2:"):
         differenced_data_3 = differenced_data_3.dropna()
         st.session_state['differenced_data_3'] = differenced_data_3
         st.write(check_stationarity(differenced_data_3['gas_price']))
+        data = differenced_data_3
     elif ADFT_choice == "Original Data":
         st.session_state['daily_gas_price_df'] = daily_gas_price_df
         st.write(check_stationarity(daily_gas_price_df['gas_price']))
+        data = daily_gas_price_df
 
 
     # Create a multiselect, that includes check stationarity of data, plot the data, 
     # Display the first 5 rows of the DataFrame
     if st.button("Plot Daily Gas Prices"):
         # Plot the daily gas prices
-        gas_price_df['gas_price'].plot(
-        title="Etherium hourly gas prices for 1 yaer period");
-        adf_test = adfuller(daily_gas_price_df['gas_price'])
+        daily_gas_price_df.plot(figsize=(12,5))
         # Display the plot
         st.pyplot()
-        st.write(f'p-value: {adf_test[1]}')
+        
 
 
     import itertools
     import statsmodels.api as sm
     import numpy as np
+
+
 
     differenced_data_1 = st.session_state['differenced_data_1']
     differenced_data_2 = st.session_state['differenced_data_2']
@@ -430,7 +515,7 @@ with st.expander("Part 3:"):
     st.write("Grid search is a model hyperparameter optimization technique. It is an exhaustive search that is performed on a specified subset of the hyperparameter space of a learning algorithm. The grid search algorithm is implemented in the GridSearchCV class. The GridSearchCV class takes a model to train, a dictionary of hyperparameters to test, and a scoring function to evaluate the performance of the model. The GridSearchCV class then performs an exhaustive search over the hyperparameter space, evaluating each combination of them and returning the best performing model.")
     st.write("In this section, we will use the GridSearchCV class to find the optimal parameters for our ARIMA model. The optimal parameters are the parameters that result in the lowest AIC score. The AIC score is a measure of the quality of a statistical model. It is calculated using the log-likelihood function and the number of parameters in the model. The lower the AIC score, the better the model.")
     st.warning("Depending on the number of iterations, the process could take up to an hour to complete.")
-    num_tries = st.slider("Select the number of iterations:", 1, 30, 1, 1)
+    num_tries = st.slider("Select the number of iterations:", 1, 500, 1, 1)
 
     if st.button("Begin Grid Search"):
         # Iterate over all combinations of p, d, and q values, 50 times
@@ -487,6 +572,11 @@ with st.expander("Part 3:"):
                     st.session_state['best_rmse_predictions'] = best_rmse_predictions
                     st.session_state['best_aic_predictions'] = best_aic_predictions
 
+        # Check if 'best_mse' key exists in st.session_state
+    if 'best_mse' not in st.session_state:
+        st.error('Please perform grid search before continuing. This will load the best model and predictions.')
+    else:
+        best_mse = st.session_state['best_mse']
 
     best_mse = st.session_state['best_mse']
     best_mae = st.session_state['best_mae']
@@ -527,31 +617,268 @@ with st.expander("Part 3:"):
 
     st.success("As you complete this section, feel free to adjust the parameters until you identify the optimal data preprocessing and model parameters.")
 
-    
-with st.expander("Model Evaluation", expanded=False):
 
-    final_select_choice = st.selectbox("Visualizations", ("Actual vs. Predicted Values", "Actual vs. Predicted Values - Rolling Forecast", "Mean Absolute Error"))
 
-    if final_select_choice == "Actual vs. Predicted Values":
-            import matplotlib.pyplot as plt
-            start_date = st.session_state['start_date']
-            end_date = st.session_state['end_date']
+
+
+pdq = st.session_state['best_rmse_model'].model.order
+st.markdown("---")
+
+
+
+with st.expander("Part 4:", expanded=False):
+    st.header("Model Evaluation")
+    data = st.session_state['data']
+
+    final_select_choice = st.selectbox("Visualizations", ("Time Series Plot - Best RMSE", "Time Series Plot","Residual Plot", "Lag Plot"))
+
+    data_with_index = data
+    data = data['gas_price']
+
+
+    if final_select_choice == "Time Series Plot":
+        data = st.session_state['data']
+        import matplotlib.pyplot as plt
+        start_date = data.index[0]
+        end_date = data.index[-1]
+        # Plot actual values
+        plt.plot(data.index, data, label='Actual')
+        # Plot predicted values from the best model
+        predicted_values = best_rmse_model.predict(start=start_date, end=end_date)
+        plt.plot(predicted_values.index, predicted_values, label='Predicted')
+        # Set labels and title
+        plt.xlabel('Date')
+        plt.ylabel('Value')
+        plt.title('Actual vs. Predicted Values - Model Predictions')
+        # Add legend
+        plt.legend()
+        fig = plt.show()
+        st.pyplot(fig)
+    elif final_select_choice == "Residual Plot":
+        residuals = best_rmse_model.resid
+        fig, ax = plt.subplots()
+        sm.graphics.tsa.plot_acf(residuals, ax=ax)
+        ax.set_xlabel('Lag')
+        ax.set_ylabel('ACF')
+        ax.set_title('Autocorrelation')
         
-            # Plot actual values
-            plt.plot(data.index, data, label='Actual')
+        # Plot the lag plot
+        fig, ax = plt.subplots()
+        sm.graphics.tsa.plot_pacf(residuals, ax=ax)
+        ax.set_xlabel('Lag')
+        ax.set_ylabel('PACF')
+        ax.set_title('Partial Autocorrelation Function (PACF) of Residuals')
 
-            # Plot predicted values from the best model
-            predicted_values = best_rmse_model.predict(start=start_date, end=end_date)
-            plt.plot(predicted_values.index, predicted_values, label='Predicted')
+        # Show the plots
+        plt.show()
+        st.pyplot()
+        # 
+        st.markdown("""
+The PACF (Partial Autocorrelation Function) of residuals plot can be used to assess whether there is any remaining autocorrelation in the residuals of a time series model. The residuals are the differences between the observed values and the predicted values of the model.
 
-            # Set labels and title
-            plt.xlabel('Date')
-            plt.ylabel('Value')
-            plt.title('Actual vs. Predicted Values - Model Predictions')
+Here's how the PACF of residuals plot can be used:
 
-            # Add legend
-            plt.legend()
+- Identifying residual autocorrelation: The PACF plot of residuals helps to identify any significant spikes at specific lags. If there are significant spikes in the PACF plot, it suggests that there is residual autocorrelation in the model. This means that the model has not captured all the temporal dependencies in the data, and there is still some pattern or information left unexplained.
 
-            # Display the plot in Streamlit
-            st.pyplot()
+- Model adequacy: The presence of significant spikes in the PACF plot indicates that the model may not adequately capture the underlying dynamics of the time series. It suggests that there is still information or patterns in the residuals that could be used to improve the model. In such cases, it might be necessary to consider more complex models or include additional variables to better capture the structure of the data.
+
+- Model refinement: If there are significant spikes in the PACF plot at specific lags, it can guide the refinement of the model. The lag corresponding to the last significant spike in the PACF plot can provide insights into the potential order of autoregressive terms (AR) in the model. This information can help in selecting the appropriate lag order for the AR component of an ARIMA or SARIMA model.
+        """)
+    elif final_select_choice == "Actual vs. Predicted Values - Testing Data":
+        # Define the start and end dates for which the data is required
+        start_date = st.slider("Select the start date ", datetime(2023, 5, 20), datetime(2024, 5, 19))
+        end_date = st.slider("Select the end date ", datetime(2023, 5, 20), datetime(2024, 5, 19))
+        # Set the best order from the previous step
+        predictions_rolling = best_rmse_model.predict(start=start_date, end=end_date)
+        import hvplot.pandas
+
+        # Create a DataFrame with the actual and predicted values
+        results_df = pd.DataFrame({'Actual': test, 'Predicted': best_rmse_predictions}, index=test.index)
+
+        # Plot the actual vs predicted values using hvplot
+        plot = results_df.hvplot.line(y=['Actual', 'Predicted'], xlabel='Timestamp', ylabel='Value', title='ARIMA Model: Actual vs Predicted (Best RMSE)')
+
+        # Display the plot using Streamlit
+        st.write(plot)
+        # Then plot it
+        plt.figure(figsize=(12,6))
+        plt.plot(data.index, data['gas_price'], label='Gas Price')
+        plt.plot(data.index, data['rolling_forecast'], label='Rolling Forecast')
+        plt.legend(loc='best')
+        plt.title('Gas Price: Actual vs Predicted with Rolling Window Forecast')
+        fig = plt.show()
+        st.pyplot(fig)
+    elif final_select_choice == "Lag Plot":
+        start_date = data.index[0]
+        end_date = data.index[-1]
+        # Plot predicted values from the best model
+        predicted_values = best_rmse_model.predict(start=start_date, end=end_date)
+        # Create lagged arrays
+        lagged_data = data[:-1]
+        lagged_predicted = predicted_values[1:]
+
+        # Plot the lagged values
+        plt.scatter(lagged_data, lagged_predicted)
+        # Set labels and title
+        plt.xlabel('Actual (t-1)')
+        plt.ylabel('Predicted (t)')
+        plt.title('Lagged Plot - Model Predictions')
+        # Add a diagonal line for reference
+        plt.plot([min(lagged_data), max(lagged_data)], [min(lagged_data), max(lagged_data)], color='red')
+        # Add legend
+        plt.legend(['Diagonal Line', 'Data Points'])
+        fig = plt.show()
+        st.pyplot(fig)
+        # Display the correlation between the lagged data and predicted values
+        st.write("Correlation between the lagged data and the predicted values:", np.corrcoef(lagged_data, lagged_predicted)[0, 1])
+        st.markdown("""
+Interpretation of the lag plot:
+
+- Random Scatter: If the points on the plot are randomly scattered around the diagonal line, it suggests that there is no significant relationship between the lagged values and the predicted values. This indicates that the model might not capture the underlying patterns or dependencies in the data.
+
+- Linear Pattern: If the points form a clear linear pattern along the diagonal line, it suggests a strong correlation between the lagged values and the predicted values. This indicates that the model captures the temporal dependencies well and is able to predict the values based on their previous values.
+
+- Deviation from the Line: If the points deviate from the diagonal line in a systematic manner (e.g., curved or funnel-shaped), it suggests the presence of non-linear patterns or other higher-order dependencies in the data. This might indicate that the ARIMA model is not sufficient to capture these complex relationships, and additional modeling techniques might be required. 
+        """)
+    elif final_select_choice == "Time Series Plot - Best RMSE":
+        st.write("This plot uses the best RMSE predictions from earlier, rather than using the model to create new predictions. The performance of this model is likely to be better than the previous plot, depending on the number of iterations used during the grid search testing.")
+        data = st.session_state['data']
+        start_date = test.index[0]
+        end_date = test.index[-1]
+        # plot the best rmse predictions 
+        plt.figure(figsize=(12, 6))
+        # Plot actual values
+        plt.plot(test.index, test, label='Actual')
+        # Plot predicted values from the best model
+        plt.plot(test.index, best_rmse_predictions, label='Predicted')
+        # Set labels and title
+        plt.xlabel('Date')
+        plt.ylabel('Value')
+        plt.title('Actual vs. Predicted Values - Best RMSE Model Predictions')
+        # Add legend
+        plt.legend()
+        fig = plt.show()
+        st.pyplot(fig)
+        # Display the correlation between the original data and the predicted values
+        st.write("With the best RMSE value, the predictions show an RMSE of:", str(best_rmse))
+
+    st.markdown("---")
+    st.header("Forecasting")
+    st.markdown("""
+
+
+You have two options for forecasting future gas prices:
+
+1. **Forecast Future Gas Prices:** Use the best model you created above to forecast future gas prices. Select the start and end dates for which you want to generate the forecasts. Please note that the performance of your model depends on the selected data, the p, d, q values, and the RMSE of your model. The forecasts will be displayed in a table and also visualized using a line plot.
+
+2. **Forecasting with Rolling Window:** Perform a rolling forecast using an ARIMA model with a specified window size. Select the start and end dates, as well as the window size for the rolling forecast. The rolling forecast involves fitting the ARIMA model on a window of data and making one-step forecasts. The forecasts will be displayed in a line plot.
+
+Please make your selection and choose the appropriate options for forecasting.
+
+---
+
+#### Forecast Future Gas Prices
+
+Below, you can forecast future gas prices using the best model you created above. The start and end dates can be selected using the sliders. Keep in mind that there are no actual values as we are forecasting into the future. The forecasts will be displayed in a table and also visualized using a line plot.
+
+#### Forecasting with Rolling Window
+
+Perform a rolling forecast using an ARIMA model with a specified window size. Select the start and end dates, as well as the window size from the available options. The rolling forecast involves fitting the ARIMA model on a window of data and making one-step forecasts. The forecasts will be displayed in a line plot.
+
+    """)
+
+    forecast_choice = st.selectbox("Forecasting", ("Forecast Future Gas Prices", "Forecasting with Rolling Window"))
+    if forecast_choice == "Forecast Future Gas Prices":
+            # Define the start and end dates for which the data is required
+            start_date = st.slider("Select the start date ", datetime(2023, 5, 20), datetime(2024, 5, 19))
+            end_date = st.slider("Select the end date ", datetime(2023, 5, 20), datetime(2024, 5, 19))
+            # Set the best order from the previous step
+            predictions_rolling = best_rmse_model.predict(start=start_date, end=end_date)
+            import hvplot.pandas
+            # Display the future predictions // remember to add a title that changes with the dates, and specifies that this is a forecast
+            # also remember that there are no actual values, as we are forecasting into the future
+            st.write(predictions_rolling)
+            # Plot the single variable using hvplot
+            plot = predictions_rolling.hvplot.line(x='Date', y=predictions_rolling.name, xlabel="Date", ylabel='Forecasted Price', title='Forecasted Price of Ethereum Gas - Rolling Forecast')
+            # Render the plot using Streamlit
+            st.bokeh_chart(hv.render(plot, backend='bokeh'))
+            # Create a DataFrame with the actual and predicted values
+    elif forecast_choice == "Forecasting with Rolling Window":
+            start_date = st.slider("Select the start date ", datetime(2023, 5, 20), datetime(2024, 5, 19))
+            end_date = st.slider("Select the end date ", datetime(2023, 5, 20), datetime(2024, 5, 19))
+            window_size = st.selectbox("Select the window size:", (1, 5, 7, 14, 30, 90))
+            def arima_rolling_forecast(train, order, window_size):
+                """
+                Perform a rolling forecast using an ARIMA model with specified window size.
+                Parameters:
+                train (array-like): The training data.
+                order (tuple): The order of the ARIMA model.
+                window_size (int): The size of the rolling window.
+                Returns:
+                predictions (list): The forecasts for the test data.
+                """
+                predictions = []
+                for i in range(0, len(train) - window_size):
+                    # Fit the ARIMA model on a window of data and make a one-step forecast
+                    window_data = train[i: i + window_size]
+                    model = ARIMA(window_data, order=order)
+                    model_fit = model.fit()
+                    yhat = model_fit.forecast()[0]
+                    # Add the forecast to the list of predictions
+                    predictions.append(yhat)
+                return predictions
+
+            # Set the best order from the previous step
+            predictions_rolling = arima_rolling_forecast(train, best_rmse_model.model.order, window_size)
             
+            plot = predictions_rolling.hvplot.line(x='Date', y=predictions_rolling.name, xlabel="Date", ylabel='Forecasted Price', title='Forecasted Price of Ethereum Gas - Rolling Forecast')
+            # Render the plot using Streamlit
+            st.bokeh_chart(hv.render(plot, backend='bokeh'))
+
+
+
+    st.markdown("---")
+with st.expander("Part 5:"):
+        st.header("Save the Model")
+        st.markdown("""
+You can save the model you created using the pickle library. The model will be saved as a .pkl file. You can load the model later using the pickle library and make predictions on new data.
+            """)
+        model_name = st.text_input("Enter a name for the model")
+        file_path = f"models/{model_name}.pkl"
+        save_model = st.button("Save Model")
+        if save_model:
+                if model_name and file_path:
+                    directory = os.path.dirname(file_path)
+                    os.makedirs(directory, exist_ok=True)
+
+                    # Save the model as a pickle file
+                    pickle.dump(best_rmse_model, open(file_path, 'wb'))
+                    st.write(f"Model '{model_name}' saved at '{file_path}'")
+                else:
+                    st.write("Please enter a name for the model")
+                st.write("The model has been saved as a .pkl file.")
+                st.write("You can load the model later using the pickle library and make predictions on new data.")
+                st.markdown("---")
+                st.write("The model can be loaded using the following code:")
+                st.code("""
+                import pickle
+                # Load the model from the file
+                model = pickle.load(open('best_model.pkl', 'rb'))
+                # Make predictions on new data
+                predictions = model.predict(start=start_date, end=end_date)
+                """)
+                st.write("You can also load the model using the following code:")
+                st.code("""
+                import pickle
+                # Load the model from the file
+                model = pickle.load(open('best_model.pkl', 'rb'))
+                # Make predictions on new data
+                predictions = model.predict(start=start_date, end=end_date)
+                """)
+                st.markdown("---")
+
+                st.write("**Congratulations!** You have successfully completed the project.")
+                st.write("As you have seen, the ARIMA model can be used to forecast time series data. You can use the model to forecast the price of Ethereum gas in the future. You can also use the model to forecast other time series data, such as stock prices, weather data, and more.")
+                st.write("Reaching this point meant you took the time to walk through the entire application, which is our goal for you. We hope you enjoyed the project and learned something new.")
+
+
